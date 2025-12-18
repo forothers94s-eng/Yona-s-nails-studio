@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nail Art Budget Calculator | 美甲造型試算</title>
+    <style>
+        :root {
+            --bg-color: #FDFBF7;
+            --primary-cream: #F5E6D3;
+            --accent-rose: #E8B4B8;
+            --text-main: #5D534A;
+            --text-light: #A89F94;
+            --white: #FFFFFF;
+            --shadow: 0 4px 15px rgba(0,0,0,0.05);
+            --radius: 18px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding-bottom: 120px; /* 為底部懸浮欄留空間 */
+            line-height: 1.6;
+        }
+
+        .container { padding: 20px; max-width: 500px; margin: 0 auto; }
+        h1 { text-align: center; font-weight: 400; font-size: 1.5rem; margin-bottom: 25px; color: var(--text-main); }
+
+        /* 卡片樣式 */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .card-title { font-weight: 600; font-size: 1rem; margin-bottom: 15px; display: flex; align-items: center; }
+        .card-title::before { content: ''; width: 4px; height: 16px; background: var(--accent-rose); margin-right: 8px; border-radius: 2px; }
+
+        /* 輸入框通用樣式 */
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            border: 1.5px solid var(--primary-cream);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--accent-rose); }
+
+        /* 快選列 (Quick Toolbar) */
+        .toolbar-wrapper {
+            margin: 0 -20px 15px -20px;
+            overflow-x: auto;
+            padding: 5px 20px;
+            display: flex;
+            gap: 10px;
+            scrollbar-width: none; /* Firefox */
+        }
+        .toolbar-wrapper::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        
+        .capsule-btn {
+            white-space: nowrap;
+            background: var(--primary-cream);
+            border: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .capsule-btn:active { transform: scale(0.95); background: var(--accent-rose); color: white; }
+
+        /* 動態列表 */
+        .dynamic-item {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr 1fr 40px;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 數量加減器 */
+        .stepper {
+            display: flex;
+            align-items: center;
+            background: var(--bg-color);
+            border-radius: 8px;
+            justify-content: space-between;
+        }
+        .stepper button {
+            background: none; border: none; width: 30px; height: 35px; cursor: pointer; font-size: 1.2rem; color: var(--text-main);
+        }
+        .stepper span { font-size: 0.9rem; min-width: 20px; text-align: center; }
+
+        .btn-delete { color: #E57373; border: none; background: none; font-size: 1.2rem; cursor: pointer; }
+
+        /* 卸甲切換按鈕 */
+        .segmented-control {
+            display: flex;
+            background: var(--bg-color);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+        .segment {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.85rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .segment.active { background: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.05); color: var(--accent-rose); font-weight: bold; }
+
+        /* 底部懸浮欄 */
+        .sticky-footer {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--white);
+            padding: 15px 25px 35px 25px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .total-label { font-size: 0.9rem; color: var(--text-light); }
+        .total-amount { font-size: 1.6rem; font-weight: bold; color: var(--accent-rose); }
+        .footer-btns { display: flex; gap: 10px; }
+        .btn-main {
+            background: var(--text-main);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        /* Bottom Sheet Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: none; z-index: 200;
+        }
+        .bottom-sheet {
+            position: fixed; bottom: -100%; left: 0; right: 0;
+            background: var(--white);
+            border-radius: 25px 25px 0 0;
+            padding: 25px;
+            transition: bottom 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 201;
+        }
+        .bottom-sheet.active { bottom: 0; }
+        .bill-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+        .bill-total { border-top: 1px dashed var(--primary-cream); margin-top: 15px; padding-top: 15px; font-weight: bold; font-size: 1.1rem; text-align: right; }
+        .copy-btn { width: 100%; background: var(--accent-rose); color: white; border: none; padding: 12px; border-radius: 12px; margin-top: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Nail Studio 試算</h1>
+
+        <div class="card">
+            <div class="card-title">基礎底價</div>
+            <input type="number" id="basePrice" placeholder="請輸入金額" value="1000" onchange="calcTotal()" onclick="autoFocus(this)">
+        </div>
+
+        <div class="card">
+            <div class="card-title">進階造型</div>
+            <div class="toolbar-wrapper">
+                <button class="capsule-btn" onclick="addDesign('手繪造型', 100)">🎨 手繪</button>
+                <button class="capsule-btn" onclick="addDesign('法式', 150)">🤍 法式</button>
+                <button class="capsule-btn" onclick="addDesign('滿鑽/大鑽', 200)">💎 滿鑽</button>
+                <button class="capsule-btn" onclick="addDesign('暈染', 100)">🌫️ 暈染</button>
+                <button class="capsule-btn" onclick="addDesign('漸層', 80)">🌈 漸層</button>
+                <button class="capsule-btn" onclick="addDesign('貓眼', 100)">🐱 貓眼</button>
+            </div>
+            <div id="designList">
+                </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">卸甲服務</div>
+            <div class="segmented-control">
+                <div class="segment active" onclick="setRemoval(this, 0)">無</div>
+                <div class="segment" onclick="setRemoval(this, 200)">本店 (200)</div>
+                <div class="segment" onclick="setRemoval(this, 300)">他店 (300)</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <span style="font-size: 0.9rem;">立體飾品卸除 (+$50/指)</span>
+                <div class="stepper" style="width: 100px;">
+                    <button onclick="changeStepper('removal3D', -1)">-</button>
+                    <span id="removal3D">0</span>
+                    <button onclick="changeStepper('removal3D', 1)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">折扣或額外加價</div>
+            <input type="number" id="extraAdjust" placeholder="正數加價，負數折扣 (例如 -100)" onchange="calcTotal()" onclick="autoFocus(this)">
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <div>
+            <div class="total-label">預算總計</div>
+            <div class="total-amount">NT$ <span id="displayTotal">1,000</span></div>
+        </div>
+        <div class="footer-btns">
+            <button class="btn-main" onclick="toggleModal(true)">👁️ 明細</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="overlay" onclick="toggleModal(false)"></div>
+    <div class="bottom-sheet" id="bottomSheet">
+        <div style="width: 40px; height: 5px; background: #eee; border-radius: 5px; margin: -10px auto 20px;"></div>
+        <h3 style="margin-top: 0;">電子帳單明細</h3>
+        <div id="billContent">
+            </div>
+        <button class="copy-btn" onclick="copyBill()">📋 複製帳單資訊</button>
+    </div>
+
+    <script>
+        let designs = [];
+        let removalPrice = 0;
+        let removal3DCount = 0;
+
+        // 1. 自動全選與捲動優化
+        function autoFocus(el) {
+            el.select();
+            setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+
+        // 2. 新增造型
+        function addDesign(name, price) {
+            const id = Date.now();
+            designs.push({ id, name, price, qty: 1 });
+            renderDesigns();
+            calcTotal();
+        }
+
+        function renderDesigns() {
+            const container = document.getElementById('designList');
+            container.innerHTML = '';
+            designs.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'dynamic-item';
+                div.innerHTML = `
+                    <input type="text" value="${item.name}" onchange="updateDesign(${index}, 'name', this.value)">
+                    <input type="number" value="${item.price}" onchange="updateDesign(${index}, 'price', this.value)" onclick="autoFocus(this)">
+                    <div class="stepper">
+                        <button onclick="updateQty(${index}, -1)">-</button>
+                        <span>${item.qty}</span>
+                        <button onclick="updateQty(${index}, 1)">+</button>
+                    </div>
+                    <button class="btn-delete" onclick="removeDesign(${index})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateDesign(index, field, value) {
+            designs[index][field] = field === 'price' ? parseInt(value) || 0 : value;
+            calcTotal();
+        }
+
+        function updateQty(index, change) {
+            designs[index].qty = Math.max(1, designs[index].qty + change);
+            renderDesigns();
+            calcTotal();
+        }
+
+        function removeDesign(index) {
+            designs.splice(index, 1);
+            renderDesigns();
+            calcTotal();
+        }
+
+        // 3. 卸甲處理
+        function setRemoval(el, price) {
+            document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
+            el.classList.add('active');
+            removalPrice = price;
+            calcTotal();
+        }
+
+        function changeStepper(id, change) {
+            removal3DCount = Math.max(0, removal3DCount + change);
+            document.getElementById(id).innerText = removal3DCount;
+            calcTotal();
+        }
+
+        // 4. 計算總價
+        function calcTotal() {
+            const base = parseInt(document.getElementById('basePrice').value) || 0;
+            const extra = parseInt(document.getElementById('extraAdjust').value) || 0;
+            const designsTotal = designs.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const removal3DTotal = removal3DCount * 50;
+            
+            const total = base + designsTotal + removalPrice + removal3DTotal + extra;
+            document.getElementById('displayTotal').innerText = total.toLocaleString();
+            return { base, designsTotal, removalPrice, removal3DTotal, extra, total };
+        }
+
+        // 5. Modal 控制
+        function toggleModal(show) {
+            const overlay = document.getElementById('overlay');
+            const sheet = document.getElementById('bottomSheet');
+            if (show) {
+                updateBillDetail();
+                overlay.style.display = 'block';
+                setTimeout(() => sheet.classList.add('active'), 10);
+            } else {
+                sheet.classList.remove('active');
+                setTimeout(() => overlay.style.display = 'none', 300);
+            }
+        }
+
+        function updateBillDetail() {
+            const data = calcTotal();
+            let html = `
+                <div class="bill-item"><span>基礎底價</span><span>$${data.base}</span></div>
+            `;
+            
+            designs.forEach(item => {
+                html += `<div class="bill-item"><span>${item.name} (x${item.qty})</span><span>$${item.price * item.qty}</span></div>`;
+            });
+
+            if (data.removalPrice > 0) {
+                html += `<div class="bill-item"><span>卸甲服務</span><span>$${data.removalPrice}</span></div>`;
+            }
+            if (data.removal3DTotal > 0) {
+                html += `<div class="bill-item"><span>立體卸除 (${removal3DCount}指)</span><span>$${data.removal3DTotal}</span></div>`;
+            }
+            if (data.extra !== 0) {
+                html += `<div class="bill-item"><span>其他調整</span><span>$${data.extra}</span></div>`;
+            }
+
+            html += `<div class="bill-total">總計：NT$ ${data.total.toLocaleString()}</div>`;
+            document.getElementById('billContent').innerHTML = html;
+        }
+
+        // 6. 複製功能
+        function copyBill() {
+            const data = calcTotal();
+            let text = `✨ Nail Art 服務明細 ✨\n`;
+            text += `--------------------------\n`;
+            text += `基礎底價: $${data.base}\n`;
+            designs.forEach(item => {
+                text += `${item.name} x${item.qty}: $${item.price * item.qty}\n`;
+            });
+            if (data.removalPrice > 0) text += `卸甲服務: $${data.removalPrice}\n`;
+            if (data.removal3DTotal > 0) text += `立體卸除 x${removal3DCount}: $${data.removal3DTotal}\n`;
+            if (data.extra !== 0) text += `其他調整: $${data.extra}\n`;
+            text += `--------------------------\n`;
+            text += `總計金額: NT$ ${data.total.toLocaleString()}\n`;
+            text += `謝謝您的預約，期待為您服務！`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('帳單明細已複製到剪貼簿！');
+            });
+        }
+    </script>
+</body>
+</html>
